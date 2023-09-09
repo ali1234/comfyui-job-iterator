@@ -4,7 +4,7 @@ Implements iteration over sequences within a single workflow run.
 
 ## Installation
 
-Just clone into custom_node. There are no dependencies.
+Just clone into custom_nodes. There are no dependencies.
 
 ## Usage
 
