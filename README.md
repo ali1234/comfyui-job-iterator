@@ -2,6 +2,10 @@
 
 Implements iteration over sequences within a single workflow run.
 
+## Installation
+
+Just clone into custom_node. There are no dependencies.
+
 ## Usage
 
 1. Make a SEQUENCE containing the values to use at each step.
