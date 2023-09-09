@@ -91,6 +91,12 @@ class FormatAttributes:
         return (format.format(**attributes), )
 
 
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+
+@register_node
 class GetAttribute:
     """Gets a named attribute from a step."""
     @classmethod
@@ -102,7 +108,7 @@ class GetAttribute:
             },
         }
 
-    RETURN_TYPES = ("*", )
+    RETURN_TYPES = (AnyType("*"), )
     RETURN_NAMES = ("value", )
     FUNCTION = "go"
     CATEGORY = "ali1234/job"
@@ -121,6 +127,8 @@ for t in ('INT', 'FLOAT', 'STRING'):
             'RETURN_TYPES': (t, ),
         }
     ))
+
+
 
 
 @register_node
