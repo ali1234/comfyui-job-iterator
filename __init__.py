@@ -10,7 +10,7 @@ def register_node(c):
     return c
 
 
-from . import sequence, job, misc
+from . import sequence, paths, job, misc
 
 
 
