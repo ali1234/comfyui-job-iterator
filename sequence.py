@@ -110,7 +110,7 @@ class Permutations:
     RETURN_TYPES = ("SEQUENCE", )
     RETURN_NAMES = ("sequence", )
     FUNCTION = "go"
-    CATEGORY = "ali1234/attributes/combinatorics"
+    CATEGORY = "ali1234/sequence"
 
     def go(self, sequence, count):
         return ([x for x in itertools.permutations(sequence, count)], )
@@ -130,7 +130,7 @@ class Join:
     RETURN_TYPES = ("SEQUENCE", )
     RETURN_NAMES = ("sequence", )
     FUNCTION = "go"
-    CATEGORY = "ali1234/attributes/combinatorics"
+    CATEGORY = "ali1234/sequence"
 
     def go(self, sequence, join_str):
         return ([join_str.join(x) for x in sequence], )
