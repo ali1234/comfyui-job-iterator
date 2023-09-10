@@ -23,6 +23,7 @@ class Stringify:
         return (str(x), repr(x))
 
 
+@register_node
 class JoinImageBatch:
     """Turns an image batch into one big image."""
     @classmethod
@@ -54,6 +55,7 @@ class JoinImageBatch:
         return (image,)
 
 
+@register_node
 class SelectImageBatch:
     """Selects one image from an image batch."""
     @classmethod
