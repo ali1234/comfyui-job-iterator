@@ -25,23 +25,21 @@ class ModelFinder:
     CATEGORY = "ali1234/sequence"
 
     def find_models(self, fn, paths, recursive):
-        if recursive:
-            fn = f'**/{fn}'
         for p in paths:
-            for f in p.glob(fn):
-                return f.relative_to(p)
-        return None
+            for f in (p.rglob(fn) if recursive else p.glob(fn)):
+                yield f.relative_to(p)
 
     def go(self, filenames, model_type, recursive, skip_missing):
         paths = [pathlib.Path(folder) for folder in folder_names_and_paths[model_type][0]]
         result = []
         for fn in filenames:
-            f = self.find_models(fn, paths, recursive)
-            if f is None:
-                if skip_missing:
-                    continue
-                else:
-                    raise Exception(f'Could not find file {fn}')
-            result.append(f)
+            if '..' in fn:
+                raise Exception(f'".." is not allowed: {fn}.')
+            found = False
+            for f in self.find_models(fn, paths, recursive):
+                found = True
+                result.append(f)
+            if not found and not skip_missing:
+                raise Exception(f'Could not find file: {fn}')
 
         return ([str(f) for f in result], [f.stem for f in result])
