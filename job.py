@@ -26,7 +26,6 @@ class MakeJob:
 
     def merge_dicts(self, *dicts):
         #return collections.ChainMap(*reversed(dicts))
-        print(dicts)
         return dict(itertools.chain.from_iterable(d.items() for d in dicts))
 
     def go(self, sequence, name):
@@ -178,7 +177,7 @@ class JobIterator:
     CATEGORY = "ali1234/job"
 
     def go(self, job, start_step):
-        print(f'JobIterator: {start_step} / {len(job) - 1}')
+        print(f'JobIterator: {start_step + 1} / {len(job)}')
         return (job[start_step], len(job), start_step)
 
 
@@ -188,7 +187,7 @@ orig_execute = PromptExecutor.execute
 
 
 def execute(self, prompt, prompt_id, extra_data={}, execute_outputs=[]):
-    print("Prompt executor has been patched!")
+    print("Prompt executor has been patched by Job Iterator!")
     orig_execute(self, prompt, prompt_id, extra_data, execute_outputs)
 
     job_iterator = None

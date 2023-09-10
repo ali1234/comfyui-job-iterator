@@ -7,6 +7,25 @@ from . import register_node
 
 
 @register_node
+class Stringify:
+    """Convert any input to str/repr."""
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "x": ("*", ),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("str", "repr")
+    FUNCTION = "go"
+    CATEGORY = "ali1234/debug"
+
+    def go(self, x):
+        return (str(x), repr(x))
+
+
 class RestoreStdStreams(object):
     # ComfyUI-Manager patches sys.stdout and sys.stder
     # which breaks GNU Readline support and makes the
@@ -39,6 +58,7 @@ class Quitter:
         print(MESSAGE)
 
 
+@register_node
 class Interact:
     """Opens an interactive REPL whenever the node is evaluated."""
     @classmethod
