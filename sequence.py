@@ -14,9 +14,9 @@ class Range:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "start": ("INT", {"default": 0, "min": 0, "max": 9999999, "step": 1}),
-                "stop": ("INT", {"default": 0, "min": 0, "max": 9999999, "step": 1}),
-                "step": ("INT", {"default": 0, "min": 0, "max": 9999999, "step": 1}),
+                "start": ("INT", {"default": 0, "min": -9999999, "max": 9999999, "step": 1}),
+                "stop": ("INT", {"default": 10, "min": -9999999, "max": 9999999, "step": 1}),
+                "step": ("INT", {"default": 1, "min": -9999999, "max": 9999999, "step": 1}),
             },
         }
 
@@ -114,6 +114,29 @@ class Permutations:
 
     def go(self, sequence, count):
         return ([x for x in itertools.permutations(sequence, count)], )
+
+
+@register_node
+class Slice:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "sequence": ("SEQUENCE",),
+                "start": ("INT", {"default": 0, "min": -9999999, "max": 9999999, "step": 1}),
+                "stop": ("INT", {"default": 9999999, "min": -9999999, "max": 9999999, "step": 1}),
+                "step": ("INT", {"default": 1, "min": -9999999, "max": 9999999, "step": 1}),
+            },
+        }
+
+    RETURN_TYPES = ("SEQUENCE", )
+    RETURN_NAMES = ("sequence", )
+    FUNCTION = "go"
+    CATEGORY = "ali1234/sequence"
+
+    def go(self, sequence, start, stop, step):
+        return (sequence[start:stop:step], )
+
 
 
 @register_node
