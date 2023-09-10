@@ -90,13 +90,16 @@ class GetImageSize:
             },
         }
 
-    RETURN_TYPES = ("INT", "INT")
-    RETURN_NAMES = ("width", "height")
+    RETURN_TYPES = ("INT", "INT", "INT")
+    RETURN_NAMES = ("width", "height", "batch_size")
     FUNCTION = "go"
     CATEGORY = "ali1234/image"
 
     def go(self, images):
-        return (images.shape[2], images.shape[1])
+        return (images.shape[2], images.shape[1], images.shape[0])
+
+
+
 
 
 @register_node
