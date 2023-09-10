@@ -24,6 +24,11 @@ class MakeJob:
     FUNCTION = "go"
     CATEGORY = "ali1234/job"
 
+    def merge_dicts(self, *dicts):
+        #return collections.ChainMap(*reversed(dicts))
+        print(dicts)
+        return dict(itertools.chain.from_iterable(d.items() for d in dicts))
+
     def go(self, sequence, name):
         result = [{name: value} for value in sequence]
         return (result, len(result))
@@ -46,7 +51,24 @@ class CombineJobs(MakeJob):
 
     def go(self, method, **kwargs):
         method = {'product': itertools.product, 'zip': zip}[method]
-        result = [collections.ChainMap(*reversed(jobs)) for jobs in method(*kwargs.values())]
+        result = [self.merge_dicts(*steps) for steps in method(*kwargs.values())]
+        return (result, len(result))
+
+
+@register_node
+class EnumerateJob(MakeJob):
+    """Combines multiple jobs."""
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "job": ("JOB", ),
+                "name": ("STRING", {"default": ''}),
+            },
+        }
+
+    def go(self, job, name):
+        result = [self.merge_dicts(step, {name: n}) for n, step in enumerate(job)]
         return (result, len(result))
 
 
