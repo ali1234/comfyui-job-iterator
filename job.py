@@ -59,6 +59,7 @@ class GetJobStep:
             "required": {
                 "job": ("JOB", ),
                 "step": ("INT", {"default": 0}),
+                "wrap": (("repeat", "clamp"), {"default": "repeat"}),
             },
         }
     RETURN_TYPES = ("ATTRIBUTES", )
@@ -66,7 +67,13 @@ class GetJobStep:
     FUNCTION = "go"
     CATEGORY = "ali1234/job"
 
-    def go(self, job, step):
+    def go(self, job, step, wrap):
+        if wrap == 'repeat':
+            while step < 0:
+                step += len(job)
+            step = step % len(job)
+        elif wrap == 'clamp':
+            step = max(min(step, len(job)), 0)
         return (job[step], )
 
 
