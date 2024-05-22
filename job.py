@@ -190,20 +190,22 @@ def execute(self, prompt, prompt_id, extra_data={}, execute_outputs=[]):
     print("Prompt executor has been patched by Job Iterator!")
     orig_execute(self, prompt, prompt_id, extra_data, execute_outputs)
 
+    steps = None
     job_iterator = None
     for k, v in prompt.items():
         try:
             if v['class_type'] == 'JobIterator':
+                steps = self.outputs[k][1][0]
                 job_iterator = k
                 break
         except KeyError:
             continue
+    else:
+        return
 
-    if job_iterator is not None:
-        steps = self.outputs[job_iterator][1][0]
-        while prompt[job_iterator]['inputs']['start_step'] < (steps - 1):
-            prompt[job_iterator]['inputs']['start_step'] += 1
-            orig_execute(self, prompt, prompt_id, extra_data, execute_outputs)
+    while prompt[job_iterator]['inputs']['start_step'] < (steps - 1):
+        prompt[job_iterator]['inputs']['start_step'] += 1
+        orig_execute(self, prompt, prompt_id, extra_data, execute_outputs)
 
 
 PromptExecutor.execute = execute
