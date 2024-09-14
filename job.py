@@ -160,52 +160,21 @@ for t in ('INT', 'FLOAT', 'STRING'):
 
 
 @register_node
-class JobIterator:
-    """Magic node that runs the workflow multiple times until all steps are done."""
+class JobToList:
+    """Converts a job into a list."""
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
                 "job": ("JOB",),
-                "start_step": ("INT", {"default": 0}),
             },
         }
 
-    RETURN_TYPES = ("ATTRIBUTES", "INT", "INT")
-    RETURN_NAMES = ("attributes", "count", "step")
+    RETURN_TYPES = ("ATTRIBUTES",)
+    RETURN_NAMES = ("attributes",)
+    OUTPUT_IS_LIST = (True,)
     FUNCTION = "go"
     CATEGORY = "ali1234/job"
 
-    def go(self, job, start_step):
-        print(f'JobIterator: {start_step + 1} / {len(job)}')
-        return (job[start_step], len(job), start_step)
-
-
-# finally monkey patch the prompt executor to handle batch prompts.
-
-orig_execute = PromptExecutor.execute
-
-
-def execute(self, prompt, prompt_id, extra_data={}, execute_outputs=[]):
-    print("Prompt executor has been patched by Job Iterator!")
-    orig_execute(self, prompt, prompt_id, extra_data, execute_outputs)
-
-    steps = None
-    job_iterator = None
-    for k, v in prompt.items():
-        try:
-            if v['class_type'] == 'JobIterator':
-                steps = self.outputs[k][1][0]
-                job_iterator = k
-                break
-        except KeyError:
-            continue
-    else:
-        return
-
-    while prompt[job_iterator]['inputs']['start_step'] < (steps - 1):
-        prompt[job_iterator]['inputs']['start_step'] += 1
-        orig_execute(self, prompt, prompt_id, extra_data, execute_outputs)
-
-
-PromptExecutor.execute = execute
+    def go(self, job):
+        return (job,)
