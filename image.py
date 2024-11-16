@@ -81,6 +81,32 @@ class SelectImageBatch:
 
 
 @register_node
+class SelectImageList:
+    """Selects one image from an image list."""
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "images": ("IMAGE",),
+                "select": ("INT", {"default": 0, "min": 0, "max": 99999, "step": 1}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("image",)
+    INPUT_IS_LIST = (True,)
+    FUNCTION = "select"
+    CATEGORY = "ali1234/image"
+
+    def select(self, images, select):
+        select = select[0]
+        n = len(images)
+        if select >= n:
+            select = n - 1
+        return (images[select],)
+
+
+@register_node
 class GetImageSize:
     @classmethod
     def INPUT_TYPES(s):
