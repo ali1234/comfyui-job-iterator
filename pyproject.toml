@@ -1,0 +1,14 @@
+[project]
+name = "comfyui-job-iterator"
+description = "Implements iteration over sequences within a single workflow run. [w/NOTE: This node replaces the execution of ComfyUI for iterative processing functionality.]"
+version = "1.0.0"
+license = "LICENSE"
+
+[project.urls]
+Repository = "https://github.com/ali1234/comfyui-job-iterator"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "comfyui-job-iterator"
+Icon = ""
