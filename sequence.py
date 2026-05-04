@@ -1,159 +1,54 @@
 import ast
-import functools
 import itertools
 
-from . import register_node
-
+from .registry import register_node
+from .types import *
 
 # Sequence creation.
 
-
-@register_node
-class Range:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "start": ("INT", {"default": 0, "min": -9999999, "max": 9999999, "step": 1}),
-                "stop": ("INT", {"default": 10, "min": -9999999, "max": 9999999, "step": 1}),
-                "step": ("INT", {"default": 1, "min": -9999999, "max": 9999999, "step": 1}),
-            },
-        }
-
-    RETURN_TYPES = ("SEQUENCE", )
-    RETURN_NAMES = ("sequence", )
-    FUNCTION = "go"
-    CATEGORY = "ali1234/sequence"
-
-    def go(self, start, stop, step):
+@register_node()
+def Range(start: Int() = 0, stop: Int() = 10, step: Int() = 1) -> (Sequence(), ):
         return (range(start, stop, step), )
 
 
-@register_node
-class Literal:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "literal": ("STRING", {'default': '', 'multiline': True})
-            },
-        }
+@register_node()
+def Literal(literal: String(multiline = True) = "") -> (Any, ):
+    return (ast.literal_eval(literal), )
 
-    RETURN_TYPES = ("SEQUENCE", )
-    RETURN_NAMES = ("sequence", )
-    FUNCTION = "go"
-    CATEGORY = "ali1234/sequence"
 
-    def go(self, literal):
-        return (ast.literal_eval(literal), )
 
 
 # Processing of existing sequences.
 
+@register_node()
+def Combinatorics(sequence: Sequence(), min: Int() = 3, max: Int() = 4, replacement: Bool() = False, permutations: Bool() = False) -> (Sequence(), ):
+    """Sequence combinatorics."""
+    comb = itertools.combinations_with_replacement if replacement else itertools.combinations
+    combs = itertools.chain(*(comb(sequence, n) for n in range(min, max+1)))
+    if permutations:
+        combs = itertools.chain(*(itertools.permutations(x) for x in combs))
+    return (list(combs), )
 
-@register_node
-class Reorder:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "sequence": ("SEQUENCE", ),
-                "method": (("reverse", "sort", "reverse sort"), {"default": "sort"}),
-            },
-        }
+format_modes = {
+    'mapping': lambda x, y: x.format(**y),
+    'iterable': lambda x, y: x.format(*y),
+    'single': lambda x, y: x.format(y)
+}
 
-    RETURN_TYPES = ("SEQUENCE", )
-    RETURN_NAMES = ("sequence", )
-    FUNCTION = "go"
-    CATEGORY = "ali1234/sequence"
-
-    def go(self, sequence, method):
-        f = {"reverse": reversed, "sort": sorted, "reverse_sort": lambda x: sorted(x, reverse=True)}[method]
-        return (f(sequence), )
-
-
-@register_node
-class Combinations:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "sequence": ("SEQUENCE", ),
-                "count": ("INT", {"default": 0, "min": 0, "max": 9999999, "step": 1}),
-                "replacement": ("BOOLEAN", {"default": False, "label_on": "Yes", "label_off": "No"}),
-            },
-        }
-
-    RETURN_TYPES = ("SEQUENCE", )
-    RETURN_NAMES = ("sequence", )
-    FUNCTION = "go"
-    CATEGORY = "ali1234/sequence"
-
-    def go(self, sequence, count, replacement):
-        if replacement:
-            return (itertools.combinations_with_replacement(sequence, count), )
-        else:
-            return (itertools.combinations(sequence, count), )
+@register_node()
+def Format(vars: Any, string: String(multiline=True) = "", mode: Combo(choices=format_modes) = 'mapping') -> (String(), ):
+    """Performs string replacement using the standard Python format() method."""
+    return (mode(string, vars), )
 
 
-@register_node
-class Permutations:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "sequence": ("SEQUENCE", ),
-                "count": ("INT", {"default": 0, "min": 0, "max": 9999999, "step": 1}),
-            },
-        }
+@register_node()
+def Join(sequence: Sequence(), sep: String() = ", ") -> (String(), ):
+    """Joins an interable of strings into a single string."""
+    return (sep.join(str(x) for x in sequence), )
 
-    RETURN_TYPES = ("SEQUENCE", )
-    RETURN_NAMES = ("sequence", )
-    FUNCTION = "go"
-    CATEGORY = "ali1234/sequence"
+@register_node(display_name = "Mapped Join")
+def MappedJoin(sequence: Sequence(), sep: String() = ", ") -> (Sequence(), ):
+    """Joins a sequence of interables of strings into a sequence of single strings."""
+    t = (sep.join(str(x) for x in s) for s in sequence)
+    return (list(t), )
 
-    def go(self, sequence, count):
-        return ([x for x in itertools.permutations(sequence, count)], )
-
-
-@register_node
-class Slice:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "sequence": ("SEQUENCE",),
-                "start": ("INT", {"default": 0, "min": -9999999, "max": 9999999, "step": 1}),
-                "stop": ("INT", {"default": 9999999, "min": -9999999, "max": 9999999, "step": 1}),
-                "step": ("INT", {"default": 1, "min": -9999999, "max": 9999999, "step": 1}),
-            },
-        }
-
-    RETURN_TYPES = ("SEQUENCE", )
-    RETURN_NAMES = ("sequence", )
-    FUNCTION = "go"
-    CATEGORY = "ali1234/sequence"
-
-    def go(self, sequence, start, stop, step):
-        return (sequence[start:stop:step], )
-
-
-
-@register_node
-class Join:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "sequence": ("SEQUENCE", ),
-                "join_str": ("STRING", {'default': ', '}),
-            },
-        }
-
-    RETURN_TYPES = ("SEQUENCE", )
-    RETURN_NAMES = ("sequence", )
-    FUNCTION = "go"
-    CATEGORY = "ali1234/sequence"
-
-    def go(self, sequence, join_str):
-        return ([join_str.join(x) for x in sequence], )

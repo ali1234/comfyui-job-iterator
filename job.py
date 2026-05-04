@@ -1,180 +1,83 @@
-import collections
-import itertools
+import math
 
-from execution import PromptExecutor
+from .registry import register_node
+from .types import *
 
-from . import register_node
+class NamedSeq:
+    def nth(self, n):
+        raise NotImplementedError
 
+    def __getitem__(self, n):
+        return dict(self.nth(n))
 
-@register_node
-class MakeJob:
-    """Turns a sequence into a job with one attribute."""
+class SingleSeq(NamedSeq):
+    def __init__(self, name, seq):
+        self._name = name
+        self._seq = seq
 
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "sequence": ("SEQUENCE", ),
-                "name": ("STRING", {"default": ''}),
-            },
-        }
+    def nth(self, n):
+        n = n % len(self)
+        yield (self._name, self._seq[n])
 
-    RETURN_TYPES = ("JOB", "INT")
-    RETURN_NAMES = ("job", "count")
-    FUNCTION = "go"
-    CATEGORY = "ali1234/job"
-
-    def merge_dicts(self, *dicts):
-        #return collections.ChainMap(*reversed(dicts))
-        return dict(itertools.chain.from_iterable(d.items() for d in dicts))
-
-    def go(self, sequence, name):
-        result = [{name: value} for value in sequence]
-        return (result, len(result))
+    def __len__(self):
+        return len(self._seq)
 
 
-@register_node
-class CombineJobs(MakeJob):
-    """Combines multiple jobs."""
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "a": ("JOB", ),
-                "method": (("zip", "product"), {"default": "zip"}),
-            },
-            "optional": {
-                x: ("JOB", ) for x in ('b', 'c', 'd', 'e')
-            }
-        }
-
-    def go(self, method, **kwargs):
-        method = {'product': itertools.product, 'zip': zip}[method]
-        result = [self.merge_dicts(*steps) for steps in method(*kwargs.values())]
-        return (result, len(result))
+class CombinedSeq(NamedSeq):
+    def __init__(self, *args):
+        self._seqs = args
 
 
-@register_node
-class EnumerateJob(MakeJob):
-    """Combines multiple jobs."""
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "job": ("JOB", ),
-                "name": ("STRING", {"default": ''}),
-            },
-        }
+class ProductSeq(CombinedSeq):
+    def nth(self, n):
+        n = n % len(self)
+        indices = []
+        for s in reversed(self._seqs):
+            indices.append(n % len(s))
+            n //= len(s)
 
-    def go(self, job, name):
-        result = [self.merge_dicts(step, {name: n}) for n, step in enumerate(job)]
-        return (result, len(result))
+        for i, s in zip(reversed(indices), self._seqs):
+            yield from s.nth(i)
+
+    def __len__(self):
+        return math.prod(len(s) for s in self._seqs)
 
 
-@register_node
-class GetJobStep:
-    """Gets the job step by number."""
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "job": ("JOB", ),
-                "step": ("INT", {"default": 0}),
-                "wrap": (("repeat", "clamp"), {"default": "repeat"}),
-            },
-        }
-    RETURN_TYPES = ("ATTRIBUTES", )
-    RETURN_NAMES = ("attributes", )
-    FUNCTION = "go"
-    CATEGORY = "ali1234/job"
+class ZipSeq(CombinedSeq):
+    def nth(self, n):
+        n = n % len(self)
+        for s in self._seqs:
+            yield from s.nth(n)
 
-    def go(self, job, step, wrap):
-        if wrap == 'repeat':
-            while step < 0:
-                step += len(job)
-            step = step % len(job)
-        elif wrap == 'clamp':
-            step = max(min(step, len(job)), 0)
-        return (job[step], )
+    def __len__(self):
+        return min(len(s) for s in self._seqs)
 
 
-@register_node
-class FormatAttributes:
-    """Applies attributes to a format string."""
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "attributes": ("ATTRIBUTES",),
-                "format": ("STRING", {'default': '', 'multiline': True, "dynamicPrompts": False})
-            },
-        }
+@register_node(display_name="Make Job")
+def MakeJob(sequence: Sequence(), name: String() = "") -> (Job(), ):
+    return SingleSeq(name, sequence),
 
-    RETURN_TYPES = ("STRING", )
-    RETURN_NAMES = ("string", )
-    FUNCTION = "go"
-    CATEGORY = "ali1234/job"
+combine_modes = {
+    'zip': ZipSeq,
+    'product': ProductSeq,
+}
 
-    def go(self, attributes, format):
-        return (format.format(**attributes), )
+@register_node(display_name="Combine Jobs")
+def CombineJobs(a: Job(), b: Job(), method: Combo(choices=combine_modes) = 'product') -> (Job(), ):
+    return method(a, b),
 
 
-class AnyType(str):
-    def __ne__(self, __value: object) -> bool:
-        return False
+@register_node(display_name="Enumerate Job")
+def EnumerateJob(job: Job(), name: String() = "") -> (Job(), ):
+    return ZipSeq(SingleSeq(name, range(len(job))), job),
 
 
-@register_node
-class GetAttribute:
-    """Gets a named attribute from a step."""
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "attributes": ("ATTRIBUTES", ),
-                "name": ("STRING", {"default": ''}),
-            },
-        }
-
-    RETURN_TYPES = (AnyType("*"), )
-    RETURN_NAMES = ("value", )
-    FUNCTION = "go"
-    CATEGORY = "ali1234/job"
-
-    def go(self, attributes, name):
-        return (attributes[name], )
+@register_node(display_name="Get Job Step")
+def GetJobStep(job: Job(), n: Int()=0) -> (JobStep(), ):
+    return (job[n], )
 
 
-# Dynamically register typed attribute getters to avoid wildcard bug
-# https://github.com/comfyanonymous/ComfyUI/pull/770
-for t in ('INT', 'FLOAT', 'STRING'):
-    register_node(type(
-        'GetAttribute'+t.title(),
-        (GetAttribute, ),
-        {
-            'RETURN_TYPES': (t, ),
-        }
-    ))
+@register_node(display_name="Get Step Attribute")
+def GetStepAttribute(step: JobStep(), name: String() = "") -> (Any, ):
+    return (step[name], )
 
-
-
-
-@register_node
-class JobToList:
-    """Converts a job into a list."""
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "job": ("JOB",),
-            },
-        }
-
-    RETURN_TYPES = ("ATTRIBUTES",)
-    RETURN_NAMES = ("attributes",)
-    OUTPUT_IS_LIST = (True,)
-    FUNCTION = "go"
-    CATEGORY = "ali1234/job"
-
-    def go(self, job):
-        return (job,)
