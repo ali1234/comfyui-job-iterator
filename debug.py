@@ -4,7 +4,7 @@ import textwrap
 import code
 
 from .registry import register_node
-from .types import Any
+from .types import Any, Variadic
 
 
 class RestoreStdStreams(object):
@@ -40,7 +40,7 @@ class Quitter:
 
 
 @register_node(category='debug', output=True, display_name='Interact')
-def Interact(*inputs: Any) -> ():
+def Interact(inputs: Variadic(Any)) -> ():
     """Opens an interactive REPL whenever the node is evaluated."""
     if sys.__stdout__.isatty():
         with RestoreStdStreams():
@@ -52,7 +52,7 @@ def Interact(*inputs: Any) -> ():
                 """),
                 exitmsg="Resuming workflow...",
                 local={
-                    'inputs': list(inputs),
+                    'inputs': inputs,
                     'quit': Quitter(),
                     'exit': Quitter(),
                 }

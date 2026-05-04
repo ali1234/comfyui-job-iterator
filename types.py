@@ -79,4 +79,34 @@ class JobStep(ComfyWidgetType):
 Any = type('AnyType', (str, ), {'__ne__': lambda self, value: False})("*")
 
 
-__all__ = ['Int', 'Float', 'String', 'Bool', 'Color', 'Combo', 'Any', 'Sequence', 'Job', 'JobStep']
+class Variadic:
+    """Annotation wrapper for variadic (multi-socket) inputs in the node decorator.
+
+    Use as a parameter annotation to declare that a node accepts up to *max*
+    numbered optional input sockets all sharing the same type::
+
+        @register_node()
+        def MyNode(items: Variadic(Int())) -> (Sequence(),):
+            return (list(items),)
+
+    The decorated function receives *items* as a plain Python list containing
+    the values of whichever numbered sockets are connected.
+    """
+
+    def __init__(self, inner, max=8):
+        self.inner = inner
+        self.max = max
+
+    @property
+    def type(self):
+        if isinstance(self.inner, ComfyWidgetType):
+            return self.inner.type
+        return self.inner
+
+    def opts(self):
+        if isinstance(self.inner, ComfyWidgetType):
+            return self.inner.opts()
+        return {}
+
+
+__all__ = ['Int', 'Float', 'String', 'Bool', 'Color', 'Combo', 'Any', 'Sequence', 'Job', 'JobStep', 'Variadic']

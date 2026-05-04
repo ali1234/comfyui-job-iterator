@@ -53,8 +53,8 @@ def MappedJoin(sequence: Sequence(), sep: String() = ", ") -> (Sequence(), ):
     return (list(t), )
 
 @register_node(display_name="Make Sequence")
-def MakeSequence(*inputs: Any) -> (Sequence(), ):
+def MakeSequence(inputs: Variadic(Any)) -> (Sequence(), ):
     """Collects variadic inputs into a single Sequence."""
-    return (list(inputs), )
+    return (inputs, )
 
 
