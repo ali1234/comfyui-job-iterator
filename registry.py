@@ -29,7 +29,7 @@ def get_nodes():
     return {k: v.exec.__doc__ for k, v in NODE_CLASS_MAPPINGS.items()}
 
 
-def register_node(category=None, version=0, display_name=None, output=False):
+def register_node(category=None, version=0, display_name=None, output=False, variadic_max=8):
     def decorator(f):
         node_attrs = {}
         node_attrs['OUTPUT_NODE'] = output
@@ -39,10 +39,23 @@ def register_node(category=None, version=0, display_name=None, output=False):
 
         node_attrs['RETURN_TYPES'] = tuple(x.type if isinstance(x, ComfyWidgetType) else x for x in sig.return_annotation)
 
+        variadic_params = set()
+
         for k, v in sig.parameters.items():
             t = v.annotation
             opts = {}
             req = 'required'
+
+            if v.kind == inspect.Parameter.VAR_POSITIONAL:
+                # Variadic *args parameter: emit numbered optional inputs.
+                variadic_params.add(k)
+                if isinstance(t, ComfyWidgetType):
+                    opts = t.opts()
+                    t = t.type
+                for i in range(variadic_max):
+                    node_attrs['_INPUT_TYPES']['optional'][f'{k}_{i}'] = (t, opts)
+                continue
+
             if isinstance(t, ComfyWidgetType):
                 opts = t.opts()
                 t = t.type
@@ -57,7 +70,6 @@ def register_node(category=None, version=0, display_name=None, output=False):
                     opts['default'] = v.default
 
             node_attrs['_INPUT_TYPES'][req][k] = (t, opts)
-            #print(t, opts)
 
         cat_list = []
         if PACK_BASE_CATEGORY is not None:
@@ -71,11 +83,28 @@ def register_node(category=None, version=0, display_name=None, output=False):
 
         @wraps(f)
         def exec(**kwargs):
-            for k, v in kwargs.items():
-                if isinstance(sig.parameters[k].annotation, ComfyWidgetType):
-                    # Look up Combo value from mapping
-                    kwargs[k] = sig.parameters[k].annotation[v]
-            return f(**kwargs)
+            call_args = []
+            call_kwargs = {}
+            for param_name, param in sig.parameters.items():
+                if param.kind == inspect.Parameter.VAR_POSITIONAL:
+                    # Collect all {param_name}_N kwargs, sorted by index.
+                    prefix = param_name + '_'
+                    numbered = {}
+                    for k in kwargs:
+                        if k.startswith(prefix) and k[len(prefix):].isdigit():
+                            numbered[int(k[len(prefix):])] = kwargs[k]
+                    values = [numbered[i] for i in sorted(numbered)]
+                    if isinstance(param.annotation, ComfyWidgetType):
+                        values = [param.annotation[v] for v in values]
+                    call_args.extend(values)
+                else:
+                    if param_name in kwargs:
+                        v = kwargs[param_name]
+                        if isinstance(param.annotation, ComfyWidgetType):
+                            # Look up Combo value from mapping
+                            v = param.annotation[v]
+                        call_kwargs[param_name] = v
+            return f(*call_args, **call_kwargs)
 
         node_attrs['exec'] = staticmethod(exec)
 

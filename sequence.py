@@ -46,9 +46,15 @@ def Join(sequence: Sequence(), sep: String() = ", ") -> (String(), ):
     """Joins an interable of strings into a single string."""
     return (sep.join(str(x) for x in sequence), )
 
-@register_node(display_name = "Mapped Join")
+@register_node(display_name="Mapped Join")
 def MappedJoin(sequence: Sequence(), sep: String() = ", ") -> (Sequence(), ):
-    """Joins a sequence of interables of strings into a sequence of single strings."""
+    """Joins a sequence of iterables of strings into a sequence of single strings."""
     t = (sep.join(str(x) for x in s) for s in sequence)
     return (list(t), )
+
+@register_node(display_name="Make Sequence")
+def MakeSequence(*inputs: Any) -> (Sequence(), ):
+    """Collects variadic inputs into a single Sequence."""
+    return (list(inputs), )
+
 
