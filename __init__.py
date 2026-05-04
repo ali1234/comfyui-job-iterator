@@ -1,16 +1,17 @@
-NODE_CLASS_MAPPINGS = {}
-NODE_DISPLAY_NAME_MAPPINGS = {}
+from typing_extensions import override
 
+from comfy_api.latest import ComfyExtension, io
 
-def register_node(c):
-    assert not isinstance(c.RETURN_TYPES, str), "Error: string found instead of tuple."
-    assert not isinstance(c.RETURN_NAMES, str), "Error: string found instead of tuple."
-    NODE_CLASS_MAPPINGS[c.__name__] = c
-    NODE_DISPLAY_NAME_MAPPINGS[c.__name__] = c.__name__
-    return c
+from .registry import set_pack_options, get_nodes
 
+set_pack_options('jobiter', 'Job Iterator')
 
-from . import sequence, paths, job, image, debug
+from . import nodes
 
+class JobIterator(ComfyExtension):
+    @override
+    async def get_node_list(self) -> list[type[io.ComfyNode]]:
+        return get_nodes()
 
-
+async def comfy_entrypoint() -> JobIterator:  # ComfyUI calls this to load your extension and its nodes.
+    return JobIterator()
