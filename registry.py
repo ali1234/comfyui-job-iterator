@@ -1,7 +1,7 @@
 import inspect
 from functools import wraps
 
-from .types import ComfyWidgetType, Combo
+from .types import ComfyWidgetType, Combo, Variadic
 
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
@@ -43,6 +43,13 @@ def register_node(category=None, version=0, display_name=None, output=False):
             t = v.annotation
             opts = {}
             req = 'required'
+
+            if isinstance(t, Variadic):
+                # Variadic parameter: emit numbered optional input sockets.
+                for i in range(t.max):
+                    node_attrs['_INPUT_TYPES']['optional'][f'{k}_{i}'] = (t.type, t.opts())
+                continue
+
             if isinstance(t, ComfyWidgetType):
                 opts = t.opts()
                 t = t.type
@@ -57,7 +64,6 @@ def register_node(category=None, version=0, display_name=None, output=False):
                     opts['default'] = v.default
 
             node_attrs['_INPUT_TYPES'][req][k] = (t, opts)
-            #print(t, opts)
 
         cat_list = []
         if PACK_BASE_CATEGORY is not None:
@@ -71,11 +77,27 @@ def register_node(category=None, version=0, display_name=None, output=False):
 
         @wraps(f)
         def exec(**kwargs):
-            for k, v in kwargs.items():
-                if isinstance(sig.parameters[k].annotation, ComfyWidgetType):
-                    # Look up Combo value from mapping
-                    kwargs[k] = sig.parameters[k].annotation[v]
-            return f(**kwargs)
+            call_kwargs = {}
+            for param_name, param in sig.parameters.items():
+                if isinstance(param.annotation, Variadic):
+                    # Collect all {param_name}_N kwargs, sorted by index.
+                    prefix = param_name + '_'
+                    numbered = {}
+                    for k in kwargs:
+                        if k.startswith(prefix) and k[len(prefix):].isdigit():
+                            numbered[int(k[len(prefix):])] = kwargs[k]
+                    values = [numbered[i] for i in sorted(numbered)]
+                    if isinstance(param.annotation.inner, ComfyWidgetType):
+                        values = [param.annotation.inner[v] for v in values]
+                    call_kwargs[param_name] = values
+                else:
+                    if param_name in kwargs:
+                        v = kwargs[param_name]
+                        if isinstance(param.annotation, ComfyWidgetType):
+                            # Look up Combo value from mapping
+                            v = param.annotation[v]
+                        call_kwargs[param_name] = v
+            return f(**call_kwargs)
 
         node_attrs['exec'] = staticmethod(exec)
 

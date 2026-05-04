@@ -3,31 +3,12 @@ import os
 import textwrap
 import code
 
-from . import register_node
-
-
-@register_node
-class Stringify:
-    """Convert any input to str/repr."""
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "x": ("*", ),
-            },
-        }
-
-    RETURN_TYPES = ("STRING", "STRING")
-    RETURN_NAMES = ("str", "repr")
-    FUNCTION = "go"
-    CATEGORY = "ali1234/debug"
-
-    def go(self, x):
-        return (str(x), repr(x))
+from .registry import register_node
+from .types import Any, Variadic
 
 
 class RestoreStdStreams(object):
-    # ComfyUI-Manager patches sys.stdout and sys.stder
+    # ComfyUI-Manager patches sys.stdout and sys.stderr
     # which breaks GNU Readline support and makes the
     # REPL annoying to use. This context manager temporarily
     # puts back the originals.
@@ -58,39 +39,26 @@ class Quitter:
         print(MESSAGE)
 
 
-@register_node
-class Interact:
+@register_node(category='debug', output=True, display_name='Interact')
+def Interact(inputs: Variadic(Any)) -> ():
     """Opens an interactive REPL whenever the node is evaluated."""
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {},
-            "optional": {x: "*" for x in ('a', 'b', 'c', 'd')},
-        }
+    if sys.__stdout__.isatty():
+        with RestoreStdStreams():
+            code.interact(
+                banner=textwrap.dedent(f"""
+                    Interactive debugging started.
+                    inputs = {inputs!r}
+                    {MESSAGE}
+                """),
+                exitmsg="Resuming workflow...",
+                local={
+                    'inputs': inputs,
+                    'quit': Quitter(),
+                    'exit': Quitter(),
+                }
+            )
+    else:
+        # Don't block the server if there is no tty.
+        print("Skipping interactive prompt because there is no tty.")
+    return ()
 
-    RETURN_TYPES = ()
-    RETURN_NAMES = ()
-    FUNCTION = "interact"
-    CATEGORY = "ali1234/debug"
-    OUTPUT_NODE = True
-
-    def interact(self, **kwargs):
-        if sys.__stdout__.isatty():
-            with RestoreStdStreams():
-                code.interact(
-                    banner=textwrap.dedent(f"""
-                        Interactive debugging started.
-                        Try `print(a)`.
-                        {MESSAGE}
-                    """),
-                    exitmsg="Resuming workflow...",
-                    local={
-                        **kwargs,
-                        'quit': Quitter(),
-                        'exit': Quitter()
-                    }
-                )
-        else:
-            # Don't block the server if there is no tty.
-            print("Skipping interactive prompt because there is no tty.")
-        return ()
